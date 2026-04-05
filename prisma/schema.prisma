@@ -1,0 +1,212 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id             String    @id @default(cuid())
+  name           String?
+  email          String    @unique
+  emailVerified  DateTime?
+  image          String?
+  password       String?
+  role           String    @default("user")
+  credits        Float     @default(0)
+  preferredModel String?   @default("openai/gpt-4o")
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  accounts       Account[]
+  sessions       Session[]
+  roleProfiles   RoleProfile[]
+  topicLists     TopicList[]
+  articles       Article[]
+  orders         Order[]
+  creditLogs     CreditLog[]
+  publishJobs    PublishJob[]
+  wpSites        WordPressSite[]
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model RoleProfile {
+  id                   String    @id @default(cuid())
+  userId               String
+  user                 User      @relation(fields: [userId], references: [id])
+  name                 String
+  bizName              String?
+  bizEmail             String?
+  bizWebsite           String?
+  brandName            String?
+  country              String?
+  mainProducts         String?
+  businessModel        String?
+  companyStatus        String?
+  exportCountries      String?   @db.Text
+  customerPosition     String?
+  customerType         String?
+  advantages           String?   @db.Text
+  mainChannels         String?
+  personaName          String?
+  personaCountry       String?
+  personaAge           String?
+  personaTraits        String?   @db.Text
+  personaProducts      String?
+  personaPreferences   String?   @db.Text
+  personaRole          String?
+  personaSourcingRegion String?
+  personaBusinessModel String?
+  personaFindSuppliers String?   @db.Text
+  personaRequirements  String?   @db.Text
+  personaPainPoints    String?   @db.Text
+  summaryZh            String?   @db.Text
+  summaryEn            String?   @db.Text
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+  articles             Article[]
+}
+
+model TopicList {
+  id           String      @id @default(cuid())
+  userId       String
+  user         User        @relation(fields: [userId], references: [id])
+  name         String
+  country      String?
+  product      String?
+  customerType String?
+  createdAt    DateTime    @default(now())
+  items        TopicItem[]
+}
+
+model TopicItem {
+  id          String    @id @default(cuid())
+  topicListId String
+  topicList   TopicList @relation(fields: [topicListId], references: [id], onDelete: Cascade)
+  title       String
+  status      String    @default("pending")
+  article     Article?
+  createdAt   DateTime  @default(now())
+}
+
+model Article {
+  id              String      @id @default(cuid())
+  userId          String
+  user            User        @relation(fields: [userId], references: [id])
+  topicItemId     String?     @unique
+  topicItem       TopicItem?  @relation(fields: [topicItemId], references: [id])
+  profileId       String?
+  profile         RoleProfile? @relation(fields: [profileId], references: [id])
+  title           String
+  markdownContent String      @db.Text
+  htmlContent     String?     @db.Text
+  serpInsights    String?     @db.Text
+  perplexityData  String?     @db.Text
+  personalInsight String?     @db.Text
+  imagePrompts    String?     @db.Text
+  imageMetadata   String?     @db.Text
+  wpPostId        Int?
+  wpUrl           String?
+  publishedAt     DateTime?
+  publishStatus   String      @default("draft")
+  withImages      Boolean     @default(true)
+  cost            Float       @default(10)
+  modelUsed       String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+}
+
+model WordPressSite {
+  id          String       @id @default(cuid())
+  userId      String
+  user        User         @relation(fields: [userId], references: [id])
+  name        String
+  url         String
+  username    String
+  appPassword String
+  isActive    Boolean      @default(true)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  publishJobs PublishJob[]
+}
+
+model Order {
+  id        String    @id @default(cuid())
+  orderId   String    @unique
+  userId    String
+  user      User      @relation(fields: [userId], references: [id])
+  credits   Float
+  amount    Float
+  status    String    @default("pending")
+  payType   String?
+  paidAt    DateTime?
+  createdAt DateTime  @default(now())
+}
+
+model CreditLog {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  amount      Float
+  type        String
+  description String
+  orderId     String?
+  articleId   String?
+  createdAt   DateTime @default(now())
+}
+
+model PublishJob {
+  id             String        @id @default(cuid())
+  userId         String
+  user           User          @relation(fields: [userId], references: [id])
+  wpSiteId       String
+  wpSite         WordPressSite @relation(fields: [wpSiteId], references: [id])
+  totalArticles  Int
+  completedCount Int           @default(0)
+  failedCount    Int           @default(0)
+  withImages     Boolean       @default(true)
+  publishMode    String        @default("immediate")
+  scheduledStart DateTime?
+  dailyLimit     Int?
+  dailyStartHour Int?
+  dailyEndHour   Int?
+  timezone       String?       @default("UTC")
+  status         String        @default("pending")
+  totalCost      Float
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+}
