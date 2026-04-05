@@ -4,7 +4,7 @@ import { prisma } from '@/lib/prisma';
 
 export default async function AdminPage() {
   const session = await auth();
-  if (session?.user.role !== 'admin') redirect('/dashboard');
+  if (session?.user?.role !== 'admin') redirect('/dashboard');
 
   const [userCount, articleCount, orderCount] = await Promise.all([
     prisma.user.count(),
