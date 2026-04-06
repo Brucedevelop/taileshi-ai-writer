@@ -56,7 +56,9 @@ export async function POST(request: Request) {
     }
   }
 
-  const profileText = profile ? JSON.stringify(profile) : '';
+  const profileText = profile
+    ? (profile.summaryEn || profile.summaryZh || JSON.stringify(profile))
+    : '';
   const content = await generateCompletion(
     buildArticlePrompt({ topic, materials: serpInsights, profile: profileText }),
     ARTICLE_GENERATOR_SYSTEM,

@@ -78,3 +78,22 @@ export async function PATCH(
 
   return NextResponse.json({ profile: updated });
 }
+
+export async function DELETE(
+  _request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const session = await auth();
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const { id } = await params;
+
+  const profile = await prisma.roleProfile.findUnique({ where: { id } });
+  if (!profile || profile.userId !== session.user.id) {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  }
+
+  await prisma.roleProfile.delete({ where: { id } });
+
+  return NextResponse.json({ success: true });
+}
