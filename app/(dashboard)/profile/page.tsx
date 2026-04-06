@@ -1,6 +1,7 @@
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import Link from 'next/link';
+import ProfileListClient from './ProfileListClient';
 
 export default async function ProfilesPage() {
   const session = await auth();
@@ -31,29 +32,7 @@ export default async function ProfilesPage() {
           </Link>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {profiles.map((profile) => (
-            <div key={profile.id} className="bg-white rounded-xl shadow-sm p-6">
-              <h3 className="font-semibold mb-1">{profile.name}</h3>
-              <p className="text-sm text-gray-500 mb-3">{profile.bizName ?? 'No company name'}</p>
-              <div className="flex gap-2">
-                <Link
-                  href={`/profile/${profile.id}`}
-                  className="text-sm text-blue-600 hover:underline"
-                >
-                  Edit
-                </Link>
-                <span className="text-gray-300">|</span>
-                <Link
-                  href={`/topics/generate?profileId=${profile.id}`}
-                  className="text-sm text-green-600 hover:underline"
-                >
-                  Generate Topics
-                </Link>
-              </div>
-            </div>
-          ))}
-        </div>
+        <ProfileListClient profiles={profiles} />
       )}
     </div>
   );

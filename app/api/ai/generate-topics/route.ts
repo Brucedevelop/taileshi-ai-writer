@@ -36,9 +36,12 @@ export async function POST(request: Request) {
 
   const selectedModel = model ?? user?.preferredModel ?? 'openai/gpt-4o';
   const count = numTopics ?? 20;
+  const profileContext = profile
+    ? (profile.summaryEn || profile.summaryZh || JSON.stringify(profile))
+    : undefined;
 
   const content = await generateCompletion(
-    buildTopicPrompt({ product, country, customerType, profile: profile ? JSON.stringify(profile) : undefined, numTopics: count }),
+    buildTopicPrompt({ product, country, customerType, profile: profileContext, numTopics: count }),
     TOPIC_GENERATOR_SYSTEM,
     selectedModel,
     { maxTokens: 8000 }

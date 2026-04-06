@@ -21,6 +21,18 @@ Structure your analysis with these sections:
 Format your response in Markdown with clear headings and bullet points.`;
 
 function buildCustomerAnalysisPrompt(profile: Record<string, unknown>): string {
+  // Use summaries if available, otherwise fall back to individual fields
+  const summaryZh = profile.summaryZh as string | null;
+  const summaryEn = profile.summaryEn as string | null;
+
+  if (summaryZh || summaryEn) {
+    const parts = [
+      summaryZh && `【中文摘要】\n${summaryZh}`,
+      summaryEn && `【English Summary】\n${summaryEn}`,
+    ].filter(Boolean).join('\n\n');
+    return `Generate a comprehensive customer analysis for this business profile:\n\n${parts}`;
+  }
+
   const fields = [
     profile.bizName && `Business Name: ${String(profile.bizName)}`,
     profile.mainProducts && `Products: ${String(profile.mainProducts)}`,

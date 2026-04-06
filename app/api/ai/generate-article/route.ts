@@ -31,7 +31,9 @@ export async function POST(request: Request) {
   if (!topicItem) return NextResponse.json({ error: 'Topic not found' }, { status: 404 });
 
   const selectedModel = model ?? user?.preferredModel ?? 'openai/gpt-4o';
-  const profileText = profile ? JSON.stringify(profile) : '';
+  const profileText = profile
+    ? (profile.summaryEn || profile.summaryZh || JSON.stringify(profile))
+    : '';
 
   const content = await generateCompletion(
     buildArticlePrompt({ topic: topicItem.title, materials: '', profile: profileText }),

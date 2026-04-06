@@ -66,7 +66,7 @@ const emptyForm: FormData = {
   summaryEn: '',
 };
 
-const STEPS = ['Business Info', 'Customer Persona', 'Summary'];
+const STEPS = ['企业信息', '客户画像', '最终确认', '摘要生成'];
 
 export default function EditProfilePage() {
   const router = useRouter();
@@ -77,6 +77,11 @@ export default function EditProfilePage() {
   const [form, setForm] = useState<FormData>(emptyForm);
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [loading, setLoading] = useState(false);
+  const [generatingSummary, setGeneratingSummary] = useState(false);
+  const [translating, setTranslating] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -126,6 +131,60 @@ export default function EditProfilePage() {
   const set = (field: keyof FormData, value: string) =>
     setForm((prev) => ({ ...prev, [field]: value }));
 
+  const handleGenerateSummary = async () => {
+    setGeneratingSummary(true);
+    setError('');
+    try {
+      const res = await fetch('/api/ai/generate-summary', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      });
+      const data = await res.json() as { summaryZh?: string; error?: string };
+      if (!res.ok) {
+        setError(data.error ?? 'Failed to generate summary');
+        return;
+      }
+      set('summaryZh', data.summaryZh ?? '');
+    } catch {
+      setError('Network error, please try again');
+    } finally {
+      setGeneratingSummary(false);
+    }
+  };
+
+  const handleTranslate = async () => {
+    if (!form.summaryZh.trim()) {
+      setError('Please generate the Chinese summary first');
+      return;
+    }
+    setTranslating(true);
+    setError('');
+    try {
+      const res = await fetch('/api/ai/translate-summary', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ summaryZh: form.summaryZh }),
+      });
+      const data = await res.json() as { summaryEn?: string; error?: string };
+      if (!res.ok) {
+        setError(data.error ?? 'Failed to translate summary');
+        return;
+      }
+      set('summaryEn', data.summaryEn ?? '');
+    } catch {
+      setError('Network error, please try again');
+    } finally {
+      setTranslating(false);
+    }
+  };
+
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(form.summaryEn);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
   const handleSubmit = async () => {
     if (!form.name.trim()) {
       setError('Profile name is required');
@@ -152,6 +211,26 @@ export default function EditProfilePage() {
     }
   };
 
+  const handleDelete = async () => {
+    setDeleting(true);
+    setError('');
+    try {
+      const res = await fetch(`/api/profiles/${id}`, { method: 'DELETE' });
+      if (!res.ok) {
+        const data = await res.json() as { error?: string };
+        setError(data.error ?? 'Failed to delete profile');
+        setShowDeleteConfirm(false);
+        return;
+      }
+      router.push('/profile');
+    } catch {
+      setError('Network error, please try again');
+      setShowDeleteConfirm(false);
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   const inputClass =
     'w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500';
   const textareaClass =
@@ -172,33 +251,68 @@ export default function EditProfilePage() {
     <div className="max-w-2xl mx-auto">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">Edit Role Profile</h1>
-        <Link href="/profile" className="text-sm text-gray-500 hover:text-gray-700">
-          ← Back
-        </Link>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setShowDeleteConfirm(true)}
+            className="text-sm text-red-500 hover:text-red-700 border border-red-300 px-3 py-1.5 rounded-lg hover:bg-red-50"
+          >
+            🗑️ Delete
+          </button>
+          <Link href="/profile" className="text-sm text-gray-500 hover:text-gray-700">
+            ← Back
+          </Link>
+        </div>
       </div>
 
+      {/* Delete confirmation dialog */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-6 max-w-sm mx-4 shadow-xl">
+            <h3 className="font-semibold text-lg mb-2">Delete Profile?</h3>
+            <p className="text-sm text-gray-500 mb-6">
+              Are you sure you want to delete &quot;{form.name}&quot;? This action cannot be undone.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                className="px-4 py-2 border border-gray-300 rounded-lg text-sm hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDelete}
+                disabled={deleting}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm hover:bg-red-700 disabled:opacity-50"
+              >
+                {deleting ? 'Deleting...' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Step indicator */}
-      <div className="flex items-center mb-8">
+      <div className="flex items-center mb-8 overflow-x-auto pb-2">
         {STEPS.map((s, i) => (
-          <div key={s} className="flex items-center">
+          <div key={s} className="flex items-center flex-shrink-0">
             <button
-              onClick={() => setStep(i)}
+              onClick={() => i < step && setStep(i)}
               className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium ${
                 i === step
                   ? 'bg-blue-600 text-white'
                   : i < step
-                  ? 'bg-blue-100 text-blue-600'
-                  : 'bg-gray-100 text-gray-400'
+                  ? 'bg-blue-100 text-blue-600 cursor-pointer'
+                  : 'bg-gray-100 text-gray-400 cursor-default'
               }`}
             >
               {i + 1}
             </button>
             <span
-              className={`ml-2 text-sm ${i === step ? 'text-gray-900 font-medium' : 'text-gray-400'}`}
+              className={`ml-2 text-sm whitespace-nowrap ${i === step ? 'text-gray-900 font-medium' : 'text-gray-400'}`}
             >
               {s}
             </span>
-            {i < STEPS.length - 1 && <div className="mx-4 h-px w-8 bg-gray-200" />}
+            {i < STEPS.length - 1 && <div className="mx-3 h-px w-6 bg-gray-200 flex-shrink-0" />}
           </div>
         ))}
       </div>
@@ -474,31 +588,174 @@ export default function EditProfilePage() {
           </div>
         )}
 
-        {/* Step 2: Summary */}
+        {/* Step 2: Final Confirmation */}
         {step === 2 && (
           <div className="space-y-4">
-            <p className="text-sm text-gray-500">
-              Optionally add a summary of this profile (used to give context to the AI).
+            <p className="text-sm text-blue-600 bg-blue-50 rounded-lg px-4 py-2">
+              ✏️ 请确认并检查以下信息，可直接在输入框中修改
             </p>
+            <h3 className="font-semibold text-gray-800 border-b pb-2">企业信息</h3>
+            <div className="grid grid-cols-2 gap-3">
+              {([
+                ['Profile Name', 'name'],
+                ['Company Name', 'bizName'],
+                ['Brand Name', 'brandName'],
+                ['Business Email', 'bizEmail'],
+                ['Website', 'bizWebsite'],
+                ['Country', 'country'],
+                ['Company Status', 'companyStatus'],
+                ['Main Products', 'mainProducts'],
+                ['Business Model', 'businessModel'],
+                ['Customer Type', 'customerType'],
+                ['Customer Position', 'customerPosition'],
+                ['Main Channels', 'mainChannels'],
+              ] as [string, keyof FormData][]).map(([label, field]) => (
+                <div key={field}>
+                  <label className={labelClass}>{label}</label>
+                  <input
+                    className={inputClass}
+                    value={form[field]}
+                    onChange={(e) => set(field, e.target.value)}
+                  />
+                </div>
+              ))}
+            </div>
             <div>
-              <label className={labelClass}>Summary (Chinese)</label>
+              <label className={labelClass}>Export Countries</label>
               <textarea
                 className={textareaClass}
-                rows={5}
-                placeholder="用中文描述企业背景、客户画像和营销目标..."
+                rows={2}
+                value={form.exportCountries}
+                onChange={(e) => set('exportCountries', e.target.value)}
+              />
+            </div>
+            <div>
+              <label className={labelClass}>Competitive Advantages</label>
+              <textarea
+                className={textareaClass}
+                rows={2}
+                value={form.advantages}
+                onChange={(e) => set('advantages', e.target.value)}
+              />
+            </div>
+            <h3 className="font-semibold text-gray-800 border-b pb-2 mt-4">客户画像</h3>
+            <div className="grid grid-cols-2 gap-3">
+              {([
+                ['Persona Name', 'personaName'],
+                ['Persona Country', 'personaCountry'],
+                ['Age Range', 'personaAge'],
+                ['Role / Title', 'personaRole'],
+                ['Products They Source', 'personaProducts'],
+                ['Sourcing Region', 'personaSourcingRegion'],
+                ['Business Model', 'personaBusinessModel'],
+              ] as [string, keyof FormData][]).map(([label, field]) => (
+                <div key={field}>
+                  <label className={labelClass}>{label}</label>
+                  <input
+                    className={inputClass}
+                    value={form[field]}
+                    onChange={(e) => set(field, e.target.value)}
+                  />
+                </div>
+              ))}
+            </div>
+            <div>
+              <label className={labelClass}>Traits</label>
+              <textarea
+                className={textareaClass}
+                rows={2}
+                value={form.personaTraits}
+                onChange={(e) => set('personaTraits', e.target.value)}
+              />
+            </div>
+            <div>
+              <label className={labelClass}>Preferences</label>
+              <textarea
+                className={textareaClass}
+                rows={2}
+                value={form.personaPreferences}
+                onChange={(e) => set('personaPreferences', e.target.value)}
+              />
+            </div>
+            <div>
+              <label className={labelClass}>How They Find Suppliers</label>
+              <textarea
+                className={textareaClass}
+                rows={2}
+                value={form.personaFindSuppliers}
+                onChange={(e) => set('personaFindSuppliers', e.target.value)}
+              />
+            </div>
+            <div>
+              <label className={labelClass}>Key Requirements</label>
+              <textarea
+                className={textareaClass}
+                rows={2}
+                value={form.personaRequirements}
+                onChange={(e) => set('personaRequirements', e.target.value)}
+              />
+            </div>
+            <div>
+              <label className={labelClass}>Pain Points</label>
+              <textarea
+                className={textareaClass}
+                rows={2}
+                value={form.personaPainPoints}
+                onChange={(e) => set('personaPainPoints', e.target.value)}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Step 3: Summary Generation */}
+        {step === 3 && (
+          <div className="space-y-6">
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <label className={labelClass}>中文摘要 (Summary Chinese)</label>
+                <button
+                  onClick={handleGenerateSummary}
+                  disabled={generatingSummary}
+                  className="flex items-center gap-1 px-4 py-1.5 bg-purple-600 text-white rounded-lg text-sm hover:bg-purple-700 disabled:opacity-50"
+                >
+                  {generatingSummary ? '生成中...' : '🤖 AI 生成摘要'}
+                </button>
+              </div>
+              <textarea
+                className={textareaClass}
+                rows={8}
+                placeholder="点击「🤖 AI 生成摘要」按钮自动生成，或手动输入..."
                 value={form.summaryZh}
                 onChange={(e) => set('summaryZh', e.target.value)}
               />
             </div>
+
             <div>
-              <label className={labelClass}>Summary (English)</label>
+              <div className="flex items-center justify-between mb-2">
+                <label className={labelClass}>英文摘要 (Summary English)</label>
+                <button
+                  onClick={handleTranslate}
+                  disabled={translating || !form.summaryZh.trim()}
+                  className="flex items-center gap-1 px-4 py-1.5 bg-green-600 text-white rounded-lg text-sm hover:bg-green-700 disabled:opacity-50"
+                >
+                  {translating ? '翻译中...' : '🌐 翻译为英文'}
+                </button>
+              </div>
               <textarea
                 className={textareaClass}
-                rows={5}
-                placeholder="Describe your business background, customer persona, and marketing goals..."
+                rows={8}
+                placeholder="中文摘要生成后，点击「翻译为英文」自动翻译，或手动输入..."
                 value={form.summaryEn}
                 onChange={(e) => set('summaryEn', e.target.value)}
               />
+              {form.summaryEn && (
+                <button
+                  onClick={handleCopy}
+                  className="mt-2 px-3 py-1.5 border border-gray-300 rounded-lg text-sm hover:bg-gray-50 text-gray-600"
+                >
+                  {copied ? '✅ 已复制' : '📋 一键复制'}
+                </button>
+              )}
             </div>
           </div>
         )}
@@ -521,7 +778,7 @@ export default function EditProfilePage() {
               onClick={() => setStep((s) => s + 1)}
               className="px-6 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700"
             >
-              Next
+              {step === 2 ? '🤖 进入摘要生成' : 'Next →'}
             </button>
           ) : (
             <button
@@ -529,7 +786,7 @@ export default function EditProfilePage() {
               disabled={loading}
               className="px-6 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 disabled:opacity-50"
             >
-              {loading ? 'Saving...' : 'Save Changes'}
+              {loading ? 'Saving...' : '💾 保存 Profile'}
             </button>
           )}
         </div>
