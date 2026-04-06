@@ -86,7 +86,7 @@ export class WPClient {
     altText?: string
   ): Promise<WPMediaResult> {
     const formData = new FormData();
-    const blob = new Blob([imageBuffer], { type: mimeType });
+    const blob = new Blob([new Uint8Array(imageBuffer)], { type: mimeType });
     formData.append('file', blob, filename);
     if (altText) formData.append('alt_text', altText);
 
