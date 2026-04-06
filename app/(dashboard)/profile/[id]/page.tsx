@@ -661,23 +661,48 @@ export default function EditProfilePage() {
             </div>
             <div>
               <label className={labelClass}>Traits</label>
-              <textarea className={textareaClass} rows={2} value={form.personaTraits} onChange={(e) => set('personaTraits', e.target.value)} />
+              <textarea
+                className={textareaClass}
+                rows={2}
+                value={form.personaTraits}
+                onChange={(e) => set('personaTraits', e.target.value)}
+              />
             </div>
             <div>
               <label className={labelClass}>Preferences</label>
-              <textarea className={textareaClass} rows={2} value={form.personaPreferences} onChange={(e) => set('personaPreferences', e.target.value)} />
+              <textarea
+                className={textareaClass}
+                rows={2}
+                value={form.personaPreferences}
+                onChange={(e) => set('personaPreferences', e.target.value)}
+              />
             </div>
             <div>
               <label className={labelClass}>How They Find Suppliers</label>
-              <textarea className={textareaClass} rows={2} value={form.personaFindSuppliers} onChange={(e) => set('personaFindSuppliers', e.target.value)} />
+              <textarea
+                className={textareaClass}
+                rows={2}
+                value={form.personaFindSuppliers}
+                onChange={(e) => set('personaFindSuppliers', e.target.value)}
+              />
             </div>
             <div>
               <label className={labelClass}>Key Requirements</label>
-              <textarea className={textareaClass} rows={2} value={form.personaRequirements} onChange={(e) => set('personaRequirements', e.target.value)} />
+              <textarea
+                className={textareaClass}
+                rows={2}
+                value={form.personaRequirements}
+                onChange={(e) => set('personaRequirements', e.target.value)}
+              />
             </div>
             <div>
               <label className={labelClass}>Pain Points</label>
-              <textarea className={textareaClass} rows={2} value={form.personaPainPoints} onChange={(e) => set('personaPainPoints', e.target.value)} />
+              <textarea
+                className={textareaClass}
+                rows={2}
+                value={form.personaPainPoints}
+                onChange={(e) => set('personaPainPoints', e.target.value)}
+              />
             </div>
           </div>
         )}
