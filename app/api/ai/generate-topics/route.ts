@@ -11,6 +11,8 @@ const schema = z.object({
   customerType: z.string().min(1),
   profileId: z.string().optional(),
   listName: z.string().optional(),
+  model: z.string().optional(),
+  numTopics: z.number().int().min(1).max(150).optional(),
 });
 
 export async function POST(request: Request) {
@@ -21,7 +23,7 @@ export async function POST(request: Request) {
   const parsed = schema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: 'Invalid input' }, { status: 400 });
 
-  const { product, country, customerType, profileId, listName } = parsed.data;
+  const { product, country, customerType, profileId, listName, model, numTopics } = parsed.data;
 
   const profile = profileId
     ? await prisma.roleProfile.findUnique({ where: { id: profileId } })
@@ -32,10 +34,13 @@ export async function POST(request: Request) {
     select: { preferredModel: true },
   });
 
+  const selectedModel = model ?? user?.preferredModel ?? 'openai/gpt-4o';
+  const count = numTopics ?? 20;
+
   const content = await generateCompletion(
-    buildTopicPrompt({ product, country, customerType, profile: profile ? JSON.stringify(profile) : undefined }),
+    buildTopicPrompt({ product, country, customerType, profile: profile ? JSON.stringify(profile) : undefined, numTopics: count }),
     TOPIC_GENERATOR_SYSTEM,
-    user?.preferredModel ?? 'openai/gpt-4o',
+    selectedModel,
     { maxTokens: 8000 }
   );
 
