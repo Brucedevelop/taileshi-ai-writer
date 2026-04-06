@@ -3,8 +3,8 @@ import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
 
-const profileSchema = z.object({
-  name: z.string().min(1),
+const updateSchema = z.object({
+  name: z.string().min(1).optional(),
   bizName: z.string().optional().nullable(),
   bizEmail: z.string().optional().nullable(),
   bizWebsite: z.string().optional().nullable(),
@@ -34,34 +34,47 @@ const profileSchema = z.object({
   summaryEn: z.string().optional().nullable(),
 });
 
-export async function GET() {
+export async function GET(
+  _request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
   const session = await auth();
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const profiles = await prisma.roleProfile.findMany({
-    where: { userId: session.user.id },
-    orderBy: { createdAt: 'desc' },
-  });
+  const { id } = await params;
 
-  return NextResponse.json({ profiles });
+  const profile = await prisma.roleProfile.findUnique({ where: { id } });
+  if (!profile || profile.userId !== session.user.id) {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  }
+
+  return NextResponse.json({ profile });
 }
 
-export async function POST(request: Request) {
+export async function PATCH(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
   const session = await auth();
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
+  const { id } = await params;
+
+  const profile = await prisma.roleProfile.findUnique({ where: { id } });
+  if (!profile || profile.userId !== session.user.id) {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  }
+
   const body = await request.json() as unknown;
-  const parsed = profileSchema.safeParse(body);
+  const parsed = updateSchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json({ error: 'Invalid input', details: parsed.error.flatten() }, { status: 400 });
   }
 
-  const profile = await prisma.roleProfile.create({
-    data: {
-      userId: session.user.id,
-      ...parsed.data,
-    },
+  const updated = await prisma.roleProfile.update({
+    where: { id },
+    data: parsed.data,
   });
 
-  return NextResponse.json({ profile });
+  return NextResponse.json({ profile: updated });
 }
